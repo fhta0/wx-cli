@@ -757,6 +757,47 @@ pub async fn q_contacts(names: &Names, query: Option<&str>, limit: usize) -> Res
     Ok(json!({ "contacts": contacts, "total": total }))
 }
 
+/// 查询当前登录用户的 wxid
+///
+/// 在 contact.db 中查找个人账号（verify_flag=0），排除群聊、公众号、系统号，
+/// 取 rowid 最小的候选记录作为 self 用户。
+pub async fn q_whoami(db: &DbCache) -> Result<Value> {
+    let path = db.get("contact/contact.db").await?;
+    let Some(p) = path else {
+        return Ok(json!({ "wxid": null, "error": "contact_db_not_found" }));
+    };
+
+    let result = tokio::task::spawn_blocking(move || -> Result<Vec<(String, String)>> {
+        let conn = Connection::open(&p).context("打开 contact.db 失败")?;
+        let mut stmt = conn.prepare(
+            "SELECT username, nick_name FROM contact \
+             WHERE verify_flag = 0 \
+             AND username NOT LIKE '@%' \
+             AND username NOT LIKE 'gh_%' \
+             AND username NOT LIKE 'biz_%' \
+             AND username NOT LIKE '%@chatroom' \
+             AND username != '' \
+             ORDER BY rowid ASC \
+             LIMIT 10",
+        )?;
+        let rows: Vec<(String, String)> = stmt
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1).unwrap_or_default(),
+                ))
+            })?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(rows)
+    })
+    .await??;
+
+    match result.into_iter().next() {
+        Some((wxid, nick_name)) => Ok(json!({ "wxid": wxid, "nick_name": nick_name })),
+        None => Ok(json!({ "wxid": null, "error": "self_not_found" })),
+    }
+}
+
 // ─── 内部辅助函数 ────────────────────────────────────────────────────────────
 
 fn resolve_username(chat_name: &str, names: &Names) -> Option<String> {

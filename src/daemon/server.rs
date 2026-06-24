@@ -307,6 +307,10 @@ async fn dispatch(req: Request, db: &DbCache, names: &tokio::sync::RwLock<Arc<Na
                 Err(e) => Response::err(e.to_string()),
             }
         }
+        Whoami => match query::q_whoami(db).await {
+            Ok(v) => Response::ok(v),
+            Err(e) => Response::err(e.to_string()),
+        },
         ReloadConfig => Response::ok(serde_json::json!({ "reloading": true })),
         BizArticles {
             limit,

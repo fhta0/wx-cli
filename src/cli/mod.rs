@@ -18,6 +18,7 @@ pub mod sns_search;
 pub mod stats;
 pub mod transport;
 pub mod unread;
+pub mod whoami;
 
 use self::output::OutputOpts;
 use anyhow::Result;
@@ -309,6 +310,12 @@ enum Commands {
         #[arg(long)]
         json: bool,
     },
+    /// 查询当前登录用户的 wxid
+    Whoami {
+        /// 输出 JSON（默认 YAML）
+        #[arg(long)]
+        json: bool,
+    },
     /// 管理 wx-daemon
     Daemon {
         #[command(subcommand)]
@@ -520,6 +527,7 @@ fn dispatch(cli: Cli) -> Result<()> {
             overwrite,
             json,
         } => extract::cmd_extract(attachment_id, output, overwrite, json),
+        Commands::Whoami { json } => whoami::cmd_whoami(json),
         Commands::Daemon { cmd } => daemon_cmd::cmd_daemon(cmd),
     }
 }

@@ -155,6 +155,8 @@ pub enum Request {
     },
     /// 重新加载配置和密钥（init --force 后 daemon 不会自动重读）
     ReloadConfig,
+    /// 查询当前登录用户的 wxid
+    Whoami,
     /// 列出某个会话里的图片附件
     /// 输出每条带 `attachment_id`（不透明 base64url 句柄），传给 `Extract` 时取回本体
     Attachments {
